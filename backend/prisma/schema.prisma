@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Class {
+  id        String    @id @default(uuid())
+  className String    @unique
+  students  Student[]
+  subjects  Subject[]
+}
+
+model Student {
+  id          String       @id @default(uuid())
+  name        String
+  rollNumber  String       @unique
+  classId     String
+  class       Class        @relation(fields: [classId], references: [id])
+  markRecords MarkRecord[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Subject {
+  id                 String       @id @default(uuid())
+  subjectName        String
+  classId            String
+  class              Class        @relation(fields: [classId], references: [id])
+  isQuran            Boolean      @default(false)
+  isGeneralKnowledge Boolean      @default(false)
+  markRecords        MarkRecord[]
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@unique([subjectName, classId])
+}
+
+model MarkRecord {
+  id            String    @id @default(uuid())
+  studentId     String
+  student       Student   @relation(fields: [studentId], references: [id])
+  subjectId     String
+  subject       Subject   @relation(fields: [subjectId], references: [id])
+  semester      Int       // 1 or 2
+  examType      ExamType
+  obtainedMarks Float
+  totalMarks    Float
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([studentId, subjectId, semester, examType])
+}
+
+enum ExamType {
+  CLASS_TEST
+  FINAL_TERM
+}

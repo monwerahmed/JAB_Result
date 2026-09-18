@@ -1,11 +1,12 @@
 const prisma = require('../../utils/prisma');
 const { AppError } = require('../../utils/errorHandler');
 
-const getAllStudents = async ({ classId, search, page = 1, limit = 20 }) => {
+const getAllStudents = async ({ classId, search, page = 1, limit = 20, includeInactive = false }) => {
   const skip = (page - 1) * limit;
   const where = {};
 
   if (classId) where.classId = classId;
+  if (!includeInactive) where.active = true;
   if (search) {
     where.OR = [
       { name: { contains: search, mode: 'insensitive' } },
@@ -71,8 +72,12 @@ const updateStudent = async (id, data) => {
 
 const deleteStudent = async (id) => {
   await getStudentById(id);
-  await prisma.markRecord.deleteMany({ where: { studentId: id } });
-  return prisma.student.delete({ where: { id } });
+  return prisma.student.update({ where: { id }, data: { active: false } });
 };
 
-module.exports = { getAllStudents, getStudentById, createStudent, updateStudent, deleteStudent };
+const restoreStudent = async (id) => {
+  await prisma.student.findUniqueOrThrow({ where: { id } });
+  return prisma.student.update({ where: { id }, data: { active: true } });
+};
+
+module.exports = { getAllStudents, getStudentById, createStudent, updateStudent, deleteStudent, restoreStudent };

@@ -3,8 +3,8 @@ const { createStudentSchema, updateStudentSchema } = require('./student.validati
 const { asyncHandler } = require('../../utils/errorHandler');
 
 const getAllStudents = asyncHandler(async (req, res) => {
-  const { classId, search, page, limit } = req.query;
-  const result = await studentService.getAllStudents({ classId, search, page, limit });
+  const { classId, search, page, limit, includeInactive } = req.query;
+  const result = await studentService.getAllStudents({ classId, search, page, limit, includeInactive: includeInactive === 'true' });
   res.status(200).json({ success: true, data: result });
 });
 
@@ -27,7 +27,12 @@ const updateStudent = asyncHandler(async (req, res) => {
 
 const deleteStudent = asyncHandler(async (req, res) => {
   await studentService.deleteStudent(req.params.id);
-  res.status(200).json({ success: true, message: 'Student deleted successfully.' });
+  res.status(200).json({ success: true, message: 'Student marked inactive.' });
 });
 
-module.exports = { getAllStudents, getStudentById, createStudent, updateStudent, deleteStudent };
+const restoreStudent = asyncHandler(async (req, res) => {
+  const student = await studentService.restoreStudent(req.params.id);
+  res.status(200).json({ success: true, message: 'Student restored.', data: student });
+});
+
+module.exports = { getAllStudents, getStudentById, createStudent, updateStudent, deleteStudent, restoreStudent };

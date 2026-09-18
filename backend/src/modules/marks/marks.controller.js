@@ -26,12 +26,12 @@ const deleteMark = asyncHandler(async (req, res) => {
 });
 
 const getStudentReport = asyncHandler(async (req, res) => {
-  const report = await marksService.generateStudentReport(req.params.studentId);
+  const report = await marksService.generateStudentReport(req.params.studentId, req.query.mode, req.query.semester);
   res.status(200).json({ success: true, data: report });
 });
 
 const getClassReport = asyncHandler(async (req, res) => {
-  const report = await marksService.generateClassReport(req.params.classId);
+  const report = await marksService.generateClassReport(req.params.classId, req.query.semester);
   res.status(200).json({ success: true, data: report });
 });
 

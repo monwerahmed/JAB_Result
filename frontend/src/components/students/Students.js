@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { studentAPI, classAPI } from '../../api';
 import { getErrMsg, initials } from '../../utils/helpers';
 import toast from 'react-hot-toast';
@@ -74,6 +75,7 @@ function StudentModal({ student, classes, onClose, onSaved }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function Students() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -103,7 +105,7 @@ export default function Students() {
     if (!window.confirm(`Delete ${student.name}? All marks will be erased.`)) return;
     try {
       await studentAPI.delete(student.id);
-      toast.success('Student deleted.');
+      toast.success('Student marked inactive.');
       fetchStudents();
     } catch (err) {
       toast.error(getErrMsg(err));
@@ -175,9 +177,13 @@ export default function Students() {
                       <td><span className="badge badge-neutral">{s.rollNumber}</span></td>
                       <td>{s.class?.className}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button className="btn btn-ghost btn-sm" onClick={() => setModal(s)}>Edit</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(s)}>Delete</button>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn btn-ghost btn-sm" onClick={() => setModal(s)}>Edit</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/reports?classId=${s.classId}&studentId=${s.id}`)}>View Report</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/marks?classId=${s.classId}&studentId=${s.id}`)}>Enter Marks</button>
+                          </div>
+                          <button className="btn btn-danger btn-sm" style={{ marginLeft: 'auto' }} onClick={() => handleDelete(s)}>Deactivate</button>
                         </div>
                       </td>
                     </tr>

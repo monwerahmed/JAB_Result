@@ -9,6 +9,7 @@ import Dashboard from './components/dashboard/Dashboard';
 import Students from './components/students/Students';
 import MarksEntry from './components/marks/MarksEntry';
 import Reports from './components/reports/Reports';
+import jamiaAhmadiyya from './jamia-ahmadiyya.jpg';
 
 function PrivateLayout({ children }) {
   const { admin, loading } = useAuth();
@@ -21,7 +22,16 @@ function PrivateLayout({ children }) {
   return (
     <div className="layout">
       <Sidebar />
-      <main className="main-content">{children}</main>
+      <main className="main-content">
+        <header className="app-header">
+          <img src={jamiaAhmadiyya} alt="Jamia Ahmadiyya Bangladesh" />
+          <div>
+            <h1>Jamia Ahmadiyya Bangladesh</h1>
+            <p>Result Management System</p>
+          </div>
+        </header>
+        {children}
+      </main>
     </div>
   );
 }

@@ -6,6 +6,7 @@ const { protect } = require('../../central-middleware/auth.middleware');
 router.use(protect);
 
 router.route('/').get(studentController.getAllStudents).post(studentController.createStudent);
+router.patch('/:id/restore', studentController.restoreStudent);
 
 router
   .route('/:id')

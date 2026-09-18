@@ -1,215 +1,349 @@
-# Result Management System (RMS)
+# Jamia Ahmadiyya Bangladesh Result System
 
-A full-stack Result Management System built with **Node.js**, **Express.js**, **Prisma ORM**, **PostgreSQL**, **Zod**, and **React.js**.
+A full-stack student result management system for classes, normalized subjects, students, class tests, semester marks, annual results, compensation cases, and printable reports.
 
----
+## Features
 
-## Architecture
+- JWT-protected administrator portal
+- PostgreSQL database with Prisma ORM
+- Globally unique subjects with many-to-many class assignments
+- Soft-deactivated students with preserved academic history
+- Shared class-test definitions per class, subject, and semester
+- Student-specific class-test and Final Term marks
+- Semester-wise and overall annual reports
+- Class-wide ranked reports with highest-student summaries
+- Printable A4 reports with institution branding and signature support
+- Responsive light UI with persistent Jamia Ahmadiyya Bangladesh branding
 
-```
-result-management-system/
+## Technology
+
+| Area | Technology |
+|---|---|
+| Frontend | React 18, React Router, Axios, React Hot Toast |
+| Backend | Node.js, Express, Zod, JWT |
+| Database | PostgreSQL |
+| ORM | Prisma |
+| Styling | CSS |
+
+## Project Structure
+
+```text
+JAB_Result/
 ├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma          # DB schema
-│   │   └── seed.js                # Seeds 7 classes + subjects
+│   │   ├── migrations/
+│   │   ├── schema.prisma
+│   │   └── seed.js
 │   └── src/
-│       ├── server.js
 │       ├── central-middleware/
-│       │   └── auth.middleware.js  # JWT protect middleware
-│       ├── utils/
-│       │   ├── errorHandler.js    # AppError + asyncHandler
-│       │   └── prisma.js          # Prisma singleton
-│       └── modules/
-│           ├── auth/              # register, login, me
-│           ├── student/           # CRUD
-│           ├── marks/             # submit, update, delete, reports
-│           ├── class/             # read-only
-│           └── subject/           # read-only per class
-└── frontend/
-    └── src/
-        ├── App.js                 # Router + auth guards
-        ├── api/index.js           # Axios client + all API calls
-        ├── context/AuthContext.js
-        ├── utils/helpers.js
-        └── components/
-            ├── auth/              # Login, Register
-            ├── shared/            # Sidebar
-            ├── dashboard/         # Stats + class table
-            ├── students/          # CRUD with modal
-            ├── marks/             # Subject-level mark entry
-            └── reports/           # Full result report viewer
+│       ├── modules/
+│       │   ├── auth/
+│       │   ├── class/
+│       │   ├── classTest/
+│       │   ├── marks/
+│       │   ├── student/
+│       │   └── subject/
+│       └── utils/
+├── frontend/
+│   ├── public/
+│   └── src/
+│       ├── api/
+│       ├── components/
+│       ├── context/
+│       └── utils/
+└── README.md
 ```
 
----
+## Requirements
 
-## Quick Start
+- Node.js 18 or newer
+- PostgreSQL 14 or newer recommended
+- npm
 
-### Prerequisites
-- Node.js v18+
-- PostgreSQL (running locally or remote)
+## Installation
 
-### 1. Clone & install
+### Install dependencies
 
-```bash
-# Backend
+```powershell
 cd backend
 npm install
 
-# Frontend
-cd ../frontend
+cd ..\frontend
 npm install
 ```
 
-### 2. Configure environment
+### Configure the backend
 
-```bash
+```powershell
 cd backend
-cp .env.example .env
-# Edit .env — set your DATABASE_URL and JWT_SECRET
+Copy-Item .env.example .env
 ```
 
-### 3. Database setup
+Example `backend/.env`:
 
-```bash
+```env
+DATABASE_URL="postgresql://postgres:1234@localhost:5432/result_management_db"
+JWT_SECRET="replace-with-a-long-random-secret"
+JWT_EXPIRES_IN="7d"
+PORT=5000
+NODE_ENV=development
+```
+
+Create the database if it does not exist:
+
+```sql
+CREATE DATABASE result_management_db;
+```
+
+### Apply migrations and generate Prisma Client
+
+Run Prisma commands from `backend`:
+
+```powershell
 cd backend
-npx prisma migrate dev --name init   # Creates tables
-npm run db:seed                       # Seeds 7 classes + subjects
+npx prisma generate
+npx prisma migrate dev
 ```
 
-### 4. Run
+### Seed development data
 
-```bash
-# Terminal 1 — Backend (port 5000)
-cd backend && npm run dev
-
-# Terminal 2 — Frontend (port 3000)
-cd frontend && npm start
+```powershell
+cd backend
+npm run db:seed
 ```
 
-Open http://localhost:3000 → Register your admin account → Start managing results.
+The seed creates seven configured classes, unique subjects, class-subject memberships, and a test student:
 
----
-
-## Business Logic Reference
-
-### Exam Weighting (per subject per semester)
-```
-Semester Score = (Avg% of Class Tests × 0.25) + (Final Term% × 0.75)
-If no class tests → 25% weight = 0
+```text
+Name: Test Student
+Roll number: TEST-001
+Class: Khamesa
 ```
 
-### Passing Criteria (per semester)
-| Subject Type | Minimum % to Pass |
-|---|---|
-| Standard | 60% |
-| Quran | 70% |
+The test student includes class-test and Final Term marks for every Khamesa subject in both semesters. The seed is idempotent.
 
-### Annual Final Result (Semester 1 + 2)
+## Running the Application
 
-**Standard Subjects:**
-- Semester 2 < 50% → Automatic FAIL
-- Total (S1+S2) < 100 → FAIL
-- Total ≥ 120 → PASS
-- Total 100–119 & Sem2 ≥ 50% → PASS WITH COMPENSATION
+Start the backend:
 
-**Quran:**
-- Total < 120 → Automatic FAIL
-- Total ≥ 140 → PASS (or COMPENSATION if Sem2 < 60%)
-- Total 120–139 → FAIL
+```powershell
+cd backend
+npm run dev
+```
 
-**General Knowledge (GK):**
-- Evaluated separately (not added to grand total)
-- If GK Semester 2 score > 60% → +10 bonus marks on grand total
+Start the frontend in another terminal:
 
----
+```powershell
+cd frontend
+npm start
+```
 
-## API Endpoints
+Open:
 
-### Auth
-| Method | Route | Auth | Description |
-|---|---|---|---|
-| POST | `/api/auth/register` | Public | Create admin |
-| POST | `/api/auth/login` | Public | Login, get JWT |
-| GET | `/api/auth/me` | Protected | Current admin |
+- Frontend: `http://localhost:3000`
+- Backend health check: `http://localhost:5000/api/health`
+
+Create a production frontend build:
+
+```powershell
+cd frontend
+npm run build
+```
+
+## Database Design
+
+The subject model is normalized:
+
+- `Subject` stores each subject name once.
+- `ClassSubject` connects subjects to any number of classes.
+- `Student` belongs to one class and has an `active` flag.
+- `ClassTest` belongs to a class-subject assignment and semester.
+- `MarkRecord` stores a student's class-test or Final Term result.
+
+Deactivating a student sets `active` to `false`. The student and all marks remain available for historical reporting.
+
+## Marks Workflow
+
+1. Select a class and semester.
+2. Create a class test once for a subject.
+3. Select a student.
+4. Select the class test and enter the obtained marks.
+5. Enter Final Term obtained marks. Final Term total marks are fixed at `100`.
+6. Save or update the result.
+
+Class-test scores are stored as rounded whole numbers. Class-test percentages are rounded before averaging. Semester scores, final results, report percentages, and totals are displayed as whole numbers.
+
+## Result Rules
+
+### Semester scoring
+
+```text
+Semester score = (average class-test percentage × 25%)
+                 + (Final Term percentage × 75%)
+```
+
+If no class tests exist, the class-test contribution is zero.
+
+### Semester pass marks
+
+| Subject type | Semester pass mark |
+|---|---:|
+| Quran | 70 |
+| General Knowledge | 20 |
+| Other subjects | 60 |
+
+### Annual result
+
+Quran:
+
+- Combined total below `120`: Fail
+- Combined total at least `120` with either semester below `70`: Pass with compensation and re-examination required
+- Both semesters at least `70`: Pass
+
+Other subjects:
+
+- Combined total below `100`: Fail
+- Combined total at least `100` with either semester below `60`: Pass with compensation and re-examination required
+- Both semesters at least `60`: Pass
+
+General Knowledge is evaluated separately and excluded from the standard grand-total subject count. A qualifying GK result can contribute the configured GK bonus.
+
+## Reports
+
+The Reports page supports:
+
+- Individual semester-wise reports
+- Individual overall annual reports
+- Overall class reports for all active students
+- Semester class reports
+- Student ranking and highest-student summary
+- Subject-wise marks and result status
+- Browser print and Save as PDF
+
+Reports use an A4 print layout, institution branding, Arabic heading, watermark controls, and an editable signature name.
+
+## API Reference
+
+All routes except public authentication routes require a JWT bearer token.
+
+### Authentication
+
+| Method | Route | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Register an administrator |
+| POST | `/api/auth/login` | Login and receive a JWT |
+| GET | `/api/auth/me` | Get the current administrator |
 
 ### Students
+
 | Method | Route | Description |
 |---|---|---|
-| GET | `/api/students` | List (filter: classId, search, page, limit) |
-| POST | `/api/students` | Create student |
-| GET | `/api/students/:id` | Get one |
-| PUT | `/api/students/:id` | Update |
-| DELETE | `/api/students/:id` | Delete (cascades marks) |
+| GET | `/api/students` | List active students; supports `classId`, `search`, `page`, `limit`, and `includeInactive` |
+| POST | `/api/students` | Create a student |
+| GET | `/api/students/:id` | Get a student |
+| PUT | `/api/students/:id` | Update a student |
+| DELETE | `/api/students/:id` | Soft-deactivate a student |
+| PATCH | `/api/students/:id/restore` | Restore a deactivated student |
 
-### Marks
+### Classes and subjects
+
 | Method | Route | Description |
 |---|---|---|
-| POST | `/api/marks` | Bulk submit `{ records: [...] }` |
-| GET | `/api/marks/student/:id` | Get marks (optional `?semester=1\|2`) |
-| PUT | `/api/marks/:id` | Update one record |
-| DELETE | `/api/marks/:id` | Delete one record |
-| GET | `/api/marks/report/student/:id` | Full calculated report |
-| GET | `/api/marks/report/class/:id` | All students in class |
+| GET | `/api/classes` | List classes and counts |
+| GET | `/api/classes/:id` | Get a class with students and subjects |
+| GET | `/api/subjects/class/:classId` | Get subjects assigned to a class |
 
-### Classes & Subjects
+### Class tests
+
 | Method | Route | Description |
 |---|---|---|
-| GET | `/api/classes` | All 7 classes |
-| GET | `/api/classes/:id` | Class + students + subjects |
-| GET | `/api/subjects/class/:classId` | Subjects for a class |
+| GET | `/api/class-tests?classId=:id&semester=1` | List shared class tests |
+| POST | `/api/class-tests` | Create a class-test definition |
+| PUT | `/api/class-tests/:id` | Update a class-test definition |
+| DELETE | `/api/class-tests/:id` | Delete a class-test definition |
 
----
-
-## Mark Submission Payload
+Class-test creation payload:
 
 ```json
 {
-  "records": [
-    {
-      "studentId": "uuid",
-      "subjectId": "uuid",
-      "semester": 1,
-      "examType": "CLASS_TEST",
-      "obtainedMarks": 18,
-      "totalMarks": 20
-    },
-    {
-      "studentId": "uuid",
-      "subjectId": "uuid",
-      "semester": 1,
-      "examType": "FINAL_TERM",
-      "obtainedMarks": 72,
-      "totalMarks": 100
-    }
-  ]
+  "classSubjectId": "uuid",
+  "semester": 1,
+  "testNumber": 1,
+  "totalMarks": 20
 }
 ```
 
-Multiple CLASS_TEST records per subject/semester are all kept and averaged.
-Only one FINAL_TERM per subject/semester is kept (auto-upserts).
+### Marks and reports
 
----
+| Method | Route | Description |
+|---|---|---|
+| POST | `/api/marks` | Create or update class-test and Final Term marks |
+| GET | `/api/marks/student/:studentId?semester=1` | Get a student's marks |
+| PUT | `/api/marks/:id` | Update one mark record |
+| DELETE | `/api/marks/:id` | Delete one mark record |
+| GET | `/api/marks/report/student/:studentId?mode=overall` | Generate an annual student report |
+| GET | `/api/marks/report/student/:studentId?mode=semester&semester=1` | Generate a semester student report |
+| GET | `/api/marks/report/class/:classId` | Generate an overall class report |
+| GET | `/api/marks/report/class/:classId?semester=1` | Generate a semester class report |
 
-## Sample Report Response
+## Troubleshooting
 
-```json
-{
-  "student": { "name": "Ahmed Ali", "rollNumber": "2024-001", "class": "Class 5" },
-  "subjectReports": [
-    {
-      "subject": { "name": "Mathematics", "isQuran": false, "isGeneralKnowledge": false },
-      "semester1": { "semesterScore": 74.25, "passed": true, "passMark": 60 },
-      "semester2": { "semesterScore": 68.0, "passed": true, "passMark": 60 },
-      "finalResult": { "sem1Score": 74.25, "sem2Score": 68.0, "totalScore": 142.25, "status": "PASS" }
-    }
-  ],
-  "summary": {
-    "grandTotal": 892.5,
-    "gkBonus": 10,
-    "overallPercentage": 74.4,
-    "overallStatus": "PASS",
-    "passedSubjects": 8,
-    "failedSubjects": 0
-  }
-}
+### Prisma resolves the wrong version
+
+Run Prisma from `backend`, not `frontend` or the workspace root:
+
+```powershell
+cd backend
+npx prisma migrate dev
 ```
+
+### Windows `EBUSY` or `EPERM` file-lock errors
+
+Stop running project Node processes, then retry. Development servers and Prisma Client generation can lock files on Windows.
+
+### Database connection errors
+
+Check that:
+
+- PostgreSQL is running on port `5432`.
+- The database exists.
+- `DATABASE_URL` credentials are correct.
+- `backend/.env` is present.
+
+### Frontend build errors caused by a locked source file
+
+Stop the running React development server before running a production build:
+
+```powershell
+cd frontend
+npm run build
+```
+
+## Development Scripts
+
+### Backend
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Start backend with Nodemon |
+| `npm start` | Start backend normally |
+| `npm run db:generate` | Generate Prisma Client |
+| `npm run db:migrate` | Create/apply a development migration |
+| `npm run db:seed` | Seed development data |
+| `npm run db:studio` | Open Prisma Studio |
+| `npm run db:reset` | Reset migrations and reseed the database |
+
+### Frontend
+
+| Command | Purpose |
+|---|---|
+| `npm start` | Start the React development server |
+| `npm run build` | Create a production build |
+
+## Security Notes
+
+- Do not commit `backend/.env`.
+- Use a long random `JWT_SECRET` outside local development.
+- Use a least-privileged PostgreSQL user in production.
+- Run the backend behind HTTPS in production.
+- Review dependency audit warnings before deployment.

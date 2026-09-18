@@ -5,16 +5,21 @@ const getSubjectsByClass = async (classId) => {
   const cls = await prisma.class.findUnique({ where: { id: classId } });
   if (!cls) throw new AppError('Class not found.', 404);
 
-  return prisma.subject.findMany({
+  const classSubjects = await prisma.classSubject.findMany({
     where: { classId },
-    orderBy: { subjectName: 'asc' },
+    include: { subject: true },
+    orderBy: { subject: { subjectName: 'asc' } },
   });
+
+  return classSubjects.map(({ id: classSubjectId, subject }) => ({ ...subject, classSubjectId }));
 };
 
 const getSubjectById = async (id) => {
   const subject = await prisma.subject.findUnique({
     where: { id },
-    include: { class: true },
+    include: {
+      classSubjects: { include: { class: true } },
+    },
   });
   if (!subject) throw new AppError('Subject not found.', 404);
   return subject;

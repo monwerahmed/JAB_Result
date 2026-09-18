@@ -17,16 +17,17 @@ model Admin {
 }
 
 model Class {
-  id        String    @id @default(uuid())
-  className String    @unique
-  students  Student[]
-  subjects  Subject[]
+  id           String        @id @default(uuid())
+  className    String        @unique
+  students     Student[]
+  classSubjects ClassSubject[]
 }
 
 model Student {
   id          String       @id @default(uuid())
   name        String
   rollNumber  String       @unique
+  active      Boolean      @default(true)
   classId     String
   class       Class        @relation(fields: [classId], references: [id])
   markRecords MarkRecord[]
@@ -35,17 +36,41 @@ model Student {
 }
 
 model Subject {
-  id                 String       @id @default(uuid())
-  subjectName        String
-  classId            String
-  class              Class        @relation(fields: [classId], references: [id])
+  id                 String        @id @default(uuid())
+  subjectName        String        @unique
   isQuran            Boolean      @default(false)
   isGeneralKnowledge Boolean      @default(false)
+  classSubjects      ClassSubject[]
   markRecords        MarkRecord[]
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
 
-  @@unique([subjectName, classId])
+model ClassSubject {
+  id        String  @id @default(uuid())
+  classId   String
+  subjectId String
+  class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  classTests ClassTest[]
+
+  @@unique([classId, subjectId])
+  @@index([subjectId])
+}
+
+model ClassTest {
+  id            String      @id @default(uuid())
+  classSubjectId String
+  semester      Int
+  testNumber    Int
+  totalMarks    Float
+  classSubject  ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  markRecords   MarkRecord[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([classSubjectId, semester, testNumber])
+  @@index([classSubjectId, semester])
 }
 
 model MarkRecord {
@@ -54,6 +79,8 @@ model MarkRecord {
   student       Student   @relation(fields: [studentId], references: [id])
   subjectId     String
   subject       Subject   @relation(fields: [subjectId], references: [id])
+  classTestId   String?
+  classTest     ClassTest? @relation(fields: [classTestId], references: [id], onDelete: SetNull)
   semester      Int       // 1 or 2
   examType      ExamType
   obtainedMarks Float

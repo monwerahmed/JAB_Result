@@ -3,6 +3,7 @@ const { z } = require('zod');
 const markRecordSchema = z.object({
   studentId: z.string().uuid('Invalid student ID'),
   subjectId: z.string().uuid('Invalid subject ID'),
+  classTestId: z.string().uuid('Invalid class test ID').optional(),
   semester: z.number().int().min(1).max(2),
   examType: z.enum(['CLASS_TEST', 'FINAL_TERM']),
   obtainedMarks: z.number().min(0, 'Obtained marks cannot be negative'),

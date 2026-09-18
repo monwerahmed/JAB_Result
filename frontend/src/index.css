@@ -1,24 +1,24 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #0f1117;
-  --surface: #1a1d27;
-  --surface2: #222535;
-  --border: #2e3248;
-  --border-light: #3a3f5c;
-  --primary: #6c63ff;
-  --primary-hover: #5a52e0;
-  --primary-glow: rgba(108,99,255,0.25);
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --compensation: #a78bfa;
-  --text: #e8eaf0;
-  --text-muted: #8892a4;
-  --text-dim: #4f566b;
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface2: #eef2f4;
+  --border: #d9e0e4;
+  --border-light: #c3cdd3;
+  --primary: #167a68;
+  --primary-hover: #0f6657;
+  --primary-glow: rgba(22,122,104,0.16);
+  --success: #16834f;
+  --warning: #b7791f;
+  --danger: #c53030;
+  --compensation: #805ad5;
+  --text: #1d2930;
+  --text-muted: #5f6f78;
+  --text-dim: #86949c;
   --radius: 10px;
   --radius-lg: 16px;
-  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow: 0 4px 24px rgba(32,52,62,0.10);
   --transition: 0.18s ease;
   --font: 'Inter', sans-serif;
   --font-display: 'Sora', sans-serif;
@@ -30,6 +30,110 @@ body {
   color: var(--text);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+.layout { position: relative; overflow: visible; }
+.layout::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url('./jamia-ahmadiyya.jpg') center 52% / min(42vw, 460px) auto no-repeat;
+  opacity: 0.075;
+  pointer-events: none;
+  z-index: 0;
+}
+.sidebar, .main-content { position: relative; z-index: 1; }
+
+.report-brand {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  flex: 0 0 92px;
+  overflow: hidden;
+}
+.report-brand img { width: 100%; height: 100%; object-fit: contain; }
+.report-heading { flex: 1; text-align: center; }
+.report-heading-arabic { font-size: 22px; line-height: 1.5; font-weight: 600; }
+.print-watermark { display: none; }
+.print-signature { display: none; }
+.compensation-note {
+  margin: 0 0 18px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--warning);
+  background: rgba(183, 121, 31, 0.08);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.btn {
+  background-image: url('./jamia-ahmadiyya.jpg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 34px auto;
+  background-blend-mode: soft-light;
+}
+
+@media print {
+  @page { size: A4 portrait; margin: 8mm; }
+  .sidebar, .app-header, .page-header, button, select, input, .toolbar, .no-print { display: none !important; }
+  .layout, .main-content, .page-body { display: block !important; margin: 0 !important; padding: 0 !important; }
+  .card, .report-subject, .summary-box { box-shadow: none !important; border: 1px solid #d6d6d6 !important; break-inside: avoid; }
+  body { background: #fff !important; color: #111 !important; }
+  table { width: 100% !important; border-collapse: collapse !important; }
+  th, td { border: 1px solid #bbb !important; color: #111 !important; }
+  .layout::before { display: none !important; }
+  .report-brand-header { margin-bottom: 8px !important; }
+  .report-brand-header .report-brand { width: 62px; height: 62px; }
+  .report-heading-arabic { font-size: 18px !important; }
+  .mark-sheet { margin-bottom: 8px !important; }
+  .mark-sheet table { font-size: 9px !important; }
+  .mark-sheet th, .mark-sheet td { padding: 3px 4px !important; }
+  .print-watermark {
+    display: block !important;
+    height: 30px;
+    margin: 0 auto 3px;
+    text-align: center;
+  }
+  .print-watermark img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    opacity: 0.16;
+  }
+  .print-signature {
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 150px;
+    margin-top: 28mm;
+    font-size: 9px;
+    line-height: 1.25;
+    color: #111 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-signature-line {
+    width: 120px;
+    border-top: 1px solid #555;
+    margin-bottom: 2px;
+  }
+  .print-signature span { font-size: 8px; }
+  .student-report-print { page-break-after: avoid; page-break-inside: avoid; }
+  .student-report-print .report-brand-header { margin-bottom: 2px !important; }
+  .student-report-print > .report-brand-header { margin-bottom: 10mm !important; }
+  .student-report-print .summary-box { margin-bottom: 5px !important; padding: 6px 8px !important; gap: 6px !important; }
+  .student-report-print .summary-item .value { font-size: 14px !important; margin-top: 1px !important; }
+  .student-report-print .summary-item .sub,
+  .student-report-print .summary-item .label { font-size: 8px !important; }
+  .student-report-print .mark-sheet { margin-bottom: 0 !important; }
+  .student-report-print .compensation-note { margin-top: 5mm; margin-bottom: 0; padding: 4px 6px; font-size: 8px; }
+  .student-report-print .print-signature { margin-top: 28mm; }
+  .print-area { margin-bottom: 0 !important; }
+  .print-area .report-brand-header { margin-bottom: 3px !important; }
+  .print-area .highest-total { margin-bottom: 4px !important; }
+  .print-area table { font-size: 8px !important; }
+  .print-area th, .print-area td { padding: 2px 3px !important; }
+  .print-area details { display: none !important; }
 }
 
 /* Scrollbar */
@@ -144,6 +248,25 @@ body {
   flex-direction: column;
   min-height: 100vh;
 }
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 32px;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(32, 52, 62, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.app-header img { width: 52px; height: 52px; object-fit: contain; flex: 0 0 52px; }
+.app-header h1 { color: var(--text); font-family: var(--font-display); font-size: 17px; font-weight: 700; line-height: 1.2; }
+.app-header p { color: var(--text-muted); font-size: 12px; margin-top: 3px; }
 
 .page-header {
   padding: 28px 32px 0;
@@ -380,6 +503,14 @@ tbody tr:hover td { background: var(--surface2); }
 @media (max-width: 768px) {
   .sidebar { transform: translateX(-100%); }
   .main-content { margin-left: 0; }
+  .app-header { padding: 8px 20px; }
   .form-grid, .form-grid-3 { grid-template-columns: 1fr; }
   .semester-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .app-header { min-height: 62px; padding: 7px 14px; }
+  .app-header img { width: 42px; height: 42px; flex-basis: 42px; }
+  .app-header h1 { font-size: 14px; }
+  .app-header p { font-size: 11px; }
 }

@@ -1,85 +1,63 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { classAPI, studentAPI, subjectAPI, marksAPI } from '../../api';
-import { getErrMsg, pct } from '../../utils/helpers';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { classAPI, studentAPI, subjectAPI, marksAPI, classTestAPI } from '../../api';
+import { getErrMsg } from '../../utils/helpers';
 import toast from 'react-hot-toast';
 
-// One row per subject in the marks table
-function SubjectMarkRow({ subject, existingMarks, semester, onRowChange }) {
-  const classTests = existingMarks.filter((m) => m.examType === 'CLASS_TEST');
-  const finalTerm = existingMarks.find((m) => m.examType === 'FINAL_TERM');
+const preventWheelChange = (event) => event.currentTarget.blur();
 
-  const [newCT, setNewCT] = useState({ obtainedMarks: '', totalMarks: '' });
-  const [ft, setFT] = useState({
-    obtainedMarks: finalTerm?.obtainedMarks ?? '',
-    totalMarks: finalTerm?.totalMarks ?? '',
-    id: finalTerm?.id,
-  });
+function SubjectMarkRow({ subject, existingMarks, classTests, onChange }) {
+  const finalTerm = existingMarks.find((mark) => mark.examType === 'FINAL_TERM');
+  const savedClassTest = existingMarks.find((mark) => mark.examType === 'CLASS_TEST');
+  const [classTestId, setClassTestId] = useState(savedClassTest?.classTestId ?? '');
+  const [obtained, setObtained] = useState(savedClassTest?.obtainedMarks ?? '');
+  const [finalObtained, setFinalObtained] = useState(finalTerm?.obtainedMarks ?? '');
+  const [finalTotal, setFinalTotal] = useState(100);
+  const selectedSavedClassTest = existingMarks.find(
+    (mark) => mark.examType === 'CLASS_TEST' && mark.classTestId === classTestId
+  );
 
   useEffect(() => {
-    onRowChange(subject.id, { newCT, ft });
-  }, [newCT, ft]); // eslint-disable-line
+    setObtained(selectedSavedClassTest?.obtainedMarks ?? '');
+  }, [classTestId, selectedSavedClassTest?.id, selectedSavedClassTest?.obtainedMarks]);
 
-  const chipLabel = subject.isQuran ? 'Quran' : subject.isGeneralKnowledge ? 'GK' : null;
+  useEffect(() => {
+    setClassTestId(savedClassTest?.classTestId ?? '');
+    setFinalObtained(finalTerm?.obtainedMarks ?? '');
+    setFinalTotal(100);
+  }, [
+    subject.id,
+    savedClassTest?.classTestId,
+    finalTerm?.obtainedMarks,
+    finalTerm?.totalMarks,
+  ]);
 
+  useEffect(() => {
+    onChange(subject.id, { classTestId, obtained, finalObtained, finalTotal });
+  }, [classTestId, obtained, finalObtained, finalTotal, subject.id, onChange]);
+
+  const selectedTest = classTests.find((test) => test.id === classTestId);
   return (
     <tr>
-      <td>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontWeight: 500 }}>{subject.subjectName}</span>
-          {chipLabel && (
-            <span className={`chip ${subject.isQuran ? 'chip-quran' : 'chip-gk'}`}>{chipLabel}</span>
-          )}
-        </div>
-        {classTests.length > 0 && (
-          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
-            {classTests.length} class test(s) saved
-            {classTests.map((ct) => (
-              <span key={ct.id} style={{ marginLeft: 6 }}>
-                [{ct.obtainedMarks}/{ct.totalMarks}]
-              </span>
-            ))}
-          </div>
-        )}
-      </td>
-      {/* New Class Test */}
+      <td style={{ fontWeight: 500 }}>{subject.subjectName}</td>
       <td>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input
-            className="form-control"
-            style={{ width: 64, textAlign: 'center' }}
-            type="number" min="0" placeholder="Got"
-            value={newCT.obtainedMarks}
-            onChange={(e) => setNewCT((p) => ({ ...p, obtainedMarks: e.target.value }))}
-          />
-          <span style={{ color: 'var(--text-dim)' }}>/</span>
-          <input
-            className="form-control"
-            style={{ width: 64, textAlign: 'center' }}
-            type="number" min="1" placeholder="Total"
-            value={newCT.totalMarks}
-            onChange={(e) => setNewCT((p) => ({ ...p, totalMarks: e.target.value }))}
-          />
+          <label htmlFor={`class-test-${subject.id}`} style={{ fontSize: 11, color: 'var(--text-muted)' }}>Test</label>
+          <select className="form-control" value={classTestId} onChange={(event) => setClassTestId(event.target.value)}>
+            <option value="">Select test</option>
+            {classTests.map((test) => <option key={test.id} value={test.id}>Test {test.testNumber} ({test.totalMarks})</option>)}
+          </select>
+          <label htmlFor={`class-test-${subject.id}`} style={{ fontSize: 11, color: 'var(--text-muted)' }}>Obtained</label>
+          <input id={`class-test-${subject.id}`} className="form-control" style={{ width: 70 }} type="number" min="0" step="1" placeholder="0" value={obtained} onWheel={preventWheelChange} onChange={(event) => setObtained(event.target.value)} disabled={!selectedTest} />
+          <span>/ {selectedTest?.totalMarks ?? 'total'}</span>
         </div>
       </td>
-      {/* Final Term */}
       <td>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input
-            className="form-control"
-            style={{ width: 64, textAlign: 'center' }}
-            type="number" min="0" placeholder="Got"
-            value={ft.obtainedMarks}
-            onChange={(e) => setFT((p) => ({ ...p, obtainedMarks: e.target.value }))}
-          />
-          <span style={{ color: 'var(--text-dim)' }}>/</span>
-          <input
-            className="form-control"
-            style={{ width: 64, textAlign: 'center' }}
-            type="number" min="1" placeholder="Total"
-            value={ft.totalMarks}
-            onChange={(e) => setFT((p) => ({ ...p, totalMarks: e.target.value }))}
-          />
-          {ft.id && <span style={{ fontSize: 10, color: 'var(--success)' }}>✓saved</span>}
+          <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>Obtained</label>
+          <input className="form-control" style={{ width: 70 }} type="number" min="0" placeholder="0" value={finalObtained} onWheel={preventWheelChange} onChange={(event) => setFinalObtained(event.target.value)} />
+          <span>/</span>
+          <span>100</span>
         </div>
       </td>
     </tr>
@@ -87,167 +65,122 @@ function SubjectMarkRow({ subject, existingMarks, semester, onRowChange }) {
 }
 
 export default function MarksEntry() {
+  const [searchParams] = useSearchParams();
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [classTests, setClassTests] = useState([]);
   const [existingMarks, setExistingMarks] = useState([]);
-
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState('1');
+  const [selectedClass, setSelectedClass] = useState(searchParams.get('classId') || '');
+  const [selectedStudent, setSelectedStudent] = useState(searchParams.get('studentId') || '');
+  const [semester, setSemester] = useState('1');
   const [rowData, setRowData] = useState({});
+  const [testForm, setTestForm] = useState({ subjectId: '', testNumber: '', totalMarks: '' });
   const [saving, setSaving] = useState(false);
-  const [loadingSubjects, setLoadingSubjects] = useState(false);
+
+  useEffect(() => { classAPI.getAll().then((response) => setClasses(response.data.data)); }, []);
 
   useEffect(() => {
-    classAPI.getAll().then((r) => setClasses(r.data.data));
-  }, []);
-
-  useEffect(() => {
-    if (!selectedClass) { setStudents([]); setSelectedStudent(''); return; }
-    studentAPI.getAll({ classId: selectedClass, limit: 200 }).then((r) => {
-      setStudents(r.data.data.students);
-      setSelectedStudent('');
-    });
-    setLoadingSubjects(true);
-    subjectAPI.getByClass(selectedClass).then((r) => {
-      setSubjects(r.data.data);
-    }).finally(() => setLoadingSubjects(false));
-  }, [selectedClass]);
+    if (!selectedClass) { setStudents([]); setSubjects([]); setClassTests([]); return; }
+    Promise.all([
+      studentAPI.getAll({ classId: selectedClass, limit: 200 }),
+      subjectAPI.getByClass(selectedClass),
+      classTestAPI.getAll({ classId: selectedClass, semester }),
+    ]).then(([studentsResponse, subjectsResponse, testsResponse]) => {
+      setStudents(studentsResponse.data.data.students);
+      setSubjects(subjectsResponse.data.data);
+      setClassTests(testsResponse.data.data);
+      const requestedStudent = searchParams.get('studentId');
+      setSelectedStudent(requestedStudent && studentsResponse.data.data.students.some((student) => student.id === requestedStudent) ? requestedStudent : '');
+    }).catch((error) => toast.error(getErrMsg(error)));
+  }, [selectedClass, semester, searchParams]);
 
   useEffect(() => {
     if (!selectedStudent) { setExistingMarks([]); return; }
-    marksAPI.getByStudent(selectedStudent, selectedSemester).then((r) => setExistingMarks(r.data.data));
-  }, [selectedStudent, selectedSemester]);
+    marksAPI.getByStudent(selectedStudent, semester).then((response) => setExistingMarks(response.data.data));
+  }, [selectedStudent, semester]);
 
-  const handleRowChange = useCallback((subjectId, data) => {
-    setRowData((prev) => ({ ...prev, [subjectId]: data }));
+  const refreshTests = async () => {
+    const response = await classTestAPI.getAll({ classId: selectedClass, semester });
+    setClassTests(response.data.data);
+  };
+
+  const handleRowChange = useCallback((id, data) => {
+    setRowData((previous) => ({ ...previous, [id]: data }));
   }, []);
 
-  const handleSave = async () => {
-    if (!selectedStudent) return toast.error('Please select a student first.');
-    const records = [];
+  const createClassTest = async (event) => {
+    event.preventDefault();
+    const subject = subjects.find((item) => item.id === testForm.subjectId);
+    if (!subject) return toast.error('Select a subject.');
+    try {
+      await classTestAPI.create({
+        classSubjectId: subject.classSubjectId,
+        semester: Number(semester),
+        testNumber: Number(testForm.testNumber),
+        totalMarks: Number(testForm.totalMarks),
+      });
+      setTestForm({ subjectId: '', testNumber: '', totalMarks: '' });
+      await refreshTests();
+      toast.success('Class test created for all students in this class.');
+    } catch (error) { toast.error(getErrMsg(error)); }
+  };
 
+  const saveMarks = async () => {
+    if (!selectedStudent) return toast.error('Select a student first.');
+    const records = [];
     for (const [subjectId, data] of Object.entries(rowData)) {
-      const { newCT, ft } = data;
-      // Add new class test if both fields filled
-      if (newCT.obtainedMarks !== '' && newCT.totalMarks !== '') {
-        const ob = parseFloat(newCT.obtainedMarks);
-        const tot = parseFloat(newCT.totalMarks);
-        if (ob > tot) { toast.error('Obtained marks exceed total marks in a class test.'); return; }
-        records.push({ studentId: selectedStudent, subjectId, semester: Number(selectedSemester), examType: 'CLASS_TEST', obtainedMarks: ob, totalMarks: tot });
+      if (data.classTestId && data.obtained !== '') {
+        const test = classTests.find((item) => item.id === data.classTestId);
+        if (!test) {
+          toast.error('The selected class test is unavailable. Refresh the class tests and try again.');
+          return;
+        }
+        const obtainedMarks = Math.round(Number(data.obtained));
+        if (obtainedMarks > test.totalMarks) return toast.error('Obtained marks exceed class test total.');
+        records.push({ studentId: selectedStudent, subjectId, classTestId: test.id, semester: Number(semester), examType: 'CLASS_TEST', obtainedMarks, totalMarks: test.totalMarks });
       }
-      // Add/update final term if both fields filled
-      if (ft.obtainedMarks !== '' && ft.totalMarks !== '') {
-        const ob = parseFloat(ft.obtainedMarks);
-        const tot = parseFloat(ft.totalMarks);
-        if (ob > tot) { toast.error('Obtained marks exceed total marks in Final Term.'); return; }
-        records.push({ studentId: selectedStudent, subjectId, semester: Number(selectedSemester), examType: 'FINAL_TERM', obtainedMarks: ob, totalMarks: tot });
+      if (data.finalObtained !== '') {
+        const obtainedMarks = Number(data.finalObtained);
+        const totalMarks = 100;
+        if (obtainedMarks > totalMarks) return toast.error('Obtained marks exceed final term total.');
+        records.push({ studentId: selectedStudent, subjectId, semester: Number(semester), examType: 'FINAL_TERM', obtainedMarks, totalMarks });
       }
     }
-
-    if (records.length === 0) return toast.error('No marks to save. Fill in at least one field.');
-
+    if (!records.length) return toast.error('Enter at least one mark.');
     setSaving(true);
     try {
       await marksAPI.submit(records);
-      toast.success(`${records.length} record(s) saved!`);
-      // Refresh existing marks
-      const res = await marksAPI.getByStudent(selectedStudent, selectedSemester);
-      setExistingMarks(res.data.data);
+      const response = await marksAPI.getByStudent(selectedStudent, semester);
+      setExistingMarks(response.data.data);
       setRowData({});
-    } catch (err) {
-      toast.error(getErrMsg(err));
-    } finally {
-      setSaving(false);
-    }
+      toast.success('Marks saved.');
+    } catch (error) { toast.error(getErrMsg(error)); }
+    finally { setSaving(false); }
   };
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h2>Enter Marks</h2>
-          <p>Select a student and semester to input or update marks.</p>
-        </div>
-      </div>
+      <div className="page-header"><div><h2>Enter Marks</h2><p>Enter the student's obtained marks. The total for a class test comes from its shared test definition.</p></div></div>
       <div className="page-body">
-        {/* Filters */}
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="form-grid-3">
-            <div className="form-group">
-              <label className="form-label">Class</label>
-              <select className="form-control" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
-                <option value="">Select class…</option>
-                {classes.map((c) => <option key={c.id} value={c.id}>{c.className}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Student</label>
-              <select className="form-control" value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} disabled={!selectedClass}>
-                <option value="">Select student…</option>
-                {students.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.rollNumber})</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Semester</label>
-              <select className="form-control" value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)}>
-                <option value="1">Semester 1</option>
-                <option value="2">Semester 2</option>
-              </select>
-            </div>
+            <select className="form-control" value={selectedClass} onChange={(event) => setSelectedClass(event.target.value)}><option value="">Select class</option>{classes.map((item) => <option key={item.id} value={item.id}>{item.className}</option>)}</select>
+            <select className="form-control" value={selectedStudent} onChange={(event) => setSelectedStudent(event.target.value)} disabled={!selectedClass}><option value="">Select student</option>{students.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.rollNumber})</option>)}</select>
+            <select className="form-control" value={semester} onChange={(event) => setSemester(event.target.value)}><option value="1">Semester 1</option><option value="2">Semester 2</option></select>
           </div>
+          {selectedClass && <form onSubmit={createClassTest} style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ width: '100%', fontSize: 12, color: 'var(--text-muted)' }}>Create the test once; it will be available when entering marks for every student in this class.</span>
+            <select aria-label="Subject for class test" className="form-control" value={testForm.subjectId} onChange={(event) => setTestForm((previous) => ({ ...previous, subjectId: event.target.value }))} required><option value="">Subject</option>{subjects.map((item) => <option key={item.id} value={item.id}>{item.subjectName}</option>)}</select>
+            <input aria-label="Class test number" className="form-control" type="number" min="1" placeholder="Test no. e.g. 1" value={testForm.testNumber} onWheel={preventWheelChange} onChange={(event) => setTestForm((previous) => ({ ...previous, testNumber: event.target.value }))} required />
+            <input aria-label="Class test total marks" className="form-control" type="number" min="1" placeholder="Total marks e.g. 20" value={testForm.totalMarks} onWheel={preventWheelChange} onChange={(event) => setTestForm((previous) => ({ ...previous, totalMarks: event.target.value }))} required />
+            <button className="btn btn-ghost" type="submit">Create Class Test</button>
+          </form>}
         </div>
-
-        {/* Marks Table */}
-        {selectedClass && selectedStudent && (
-          <div className="card" style={{ padding: 0 }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>Mark Entry — Semester {selectedSemester}</h3>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                  Leave blank to skip. Final Term per subject: only 1 allowed (saves/updates).
-                </p>
-              </div>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                {saving ? <><span className="spinner" /> Saving…</> : '💾 Save Marks'}
-              </button>
-            </div>
-            {loadingSubjects ? (
-              <div className="loading-wrap"><span className="spinner" /> Loading subjects…</div>
-            ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Subject</th>
-                      <th>New Class Test (Obtained / Total)</th>
-                      <th>Final Term (Obtained / Total)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {subjects.map((sub) => (
-                      <SubjectMarkRow
-                        key={sub.id}
-                        subject={sub}
-                        semester={Number(selectedSemester)}
-                        existingMarks={existingMarks.filter((m) => m.subjectId === sub.id)}
-                        onRowChange={handleRowChange}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {!selectedClass && (
-          <div className="empty-state">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <p>Select a class and student above to begin entering marks.</p>
-          </div>
-        )}
+        {selectedClass && selectedStudent && <div className="card" style={{ padding: 0 }}>
+          <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between' }}><h3>Marks - Semester {semester}</h3><button className="btn btn-primary" onClick={saveMarks} disabled={saving}>{saving ? 'Saving...' : 'Save Marks'}</button></div>
+          <div className="table-wrap"><table><thead><tr><th>Subject</th><th>Class Test</th><th>Final Term</th></tr></thead><tbody>{subjects.map((subject) => <SubjectMarkRow key={subject.id} subject={subject} existingMarks={existingMarks.filter((mark) => mark.subjectId === subject.id)} classTests={classTests.filter((test) => test.classSubject?.subjectId === subject.id)} onChange={handleRowChange} />)}</tbody></table></div>
+        </div>}
       </div>
     </div>
   );

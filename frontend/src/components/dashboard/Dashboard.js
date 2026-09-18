@@ -82,9 +82,6 @@ export default function Dashboard() {
                             <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/students?classId=${cls.id}`)}>
                               View Students
                             </button>
-                            <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/reports?classId=${cls.id}`)}>
-                              Reports
-                            </button>
                           </div>
                         </td>
                       </tr>

@@ -48,6 +48,15 @@ export const studentAPI = {
   create: (data) => api.post('/students', data),
   update: (id, data) => api.put(`/students/${id}`, data),
   delete: (id) => api.delete(`/students/${id}`),
+  restore: (id) => api.patch(`/students/${id}/restore`),
+};
+
+// Shared class test definitions
+export const classTestAPI = {
+  getAll: (params) => api.get('/class-tests', { params }),
+  create: (data) => api.post('/class-tests', data),
+  update: (id, data) => api.put(`/class-tests/${id}`, data),
+  delete: (id) => api.delete(`/class-tests/${id}`),
 };
 
 // Marks
@@ -57,8 +66,8 @@ export const marksAPI = {
     api.get(`/marks/student/${studentId}`, { params: semester ? { semester } : {} }),
   update: (id, data) => api.put(`/marks/${id}`, data),
   delete: (id) => api.delete(`/marks/${id}`),
-  studentReport: (studentId) => api.get(`/marks/report/student/${studentId}`),
-  classReport: (classId) => api.get(`/marks/report/class/${classId}`),
+  studentReport: (studentId, params) => api.get(`/marks/report/student/${studentId}`, { params }),
+  classReport: (classId, params) => api.get(`/marks/report/class/${classId}`, { params }),
 };
 
 export default api;

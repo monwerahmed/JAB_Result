@@ -10,7 +10,7 @@ const FINAL_TERM_TOTAL_MARKS = 100;
 /**
  * Calculate semester score for a subject using:
  * Score = (Avg% of ClassTests * 0.25) + (FinalTerm% * 0.75)
- * If no class tests: the 25% weight defaults to 0
+ * If no class tests were taken, the final term is treated as the full 100%.
  */
 const calcSemesterScore = (classTests, finalTerm) => {
   const finalTermPct = finalTerm ? Math.round((finalTerm.obtainedMarks / finalTerm.totalMarks) * 100) : 0;
@@ -18,34 +18,38 @@ const calcSemesterScore = (classTests, finalTerm) => {
   let classTestWeight = 0;
   let classTestAvgPct = null;
   if (classTests.length > 0) {
-    const avgPct = classTests.reduce(
-      (sum, t) => sum + Math.round((t.obtainedMarks / t.totalMarks) * 100),
-      0
-    ) / classTests.length;
-    classTestWeight = avgPct * 0.25;
-    classTestAvgPct = Math.round(avgPct);
+    const classTestObtained = classTests.reduce((sum, test) => sum + test.obtainedMarks, 0);
+    const classTestTotal = classTests.reduce((sum, test) => sum + test.totalMarks, 0);
+    const combinedPct = classTestTotal > 0 ? (classTestObtained / classTestTotal) * 100 : 0;
+    classTestWeight = combinedPct * 0.25;
+    classTestAvgPct = Math.round(combinedPct);
   }
 
-  const finalTermWeight = finalTermPct * 0.75;
+  const hasClassTests = classTests.length > 0;
+  const finalTermWeight = finalTermPct * (hasClassTests ? 0.75 : 1);
   const semesterScore = Math.round(classTestWeight + finalTermWeight); // out of 100
 
   return {
     semesterScore,              // percentage score 0-100
     classTestAvgPct,
+    classTestCombinedPct: classTestAvgPct,
+    classTestWeightedMarks: Math.round(classTestWeight),
     finalTermPct,
-    hasClassTests: classTests.length > 0,
+    finalTermWeightedMarks: Math.round(finalTermWeight),
+    hasClassTests,
     classTestCount: classTests.length,
   };
 };
 
 /**
  * Determine per-semester pass status.
- * Quran: need >= 70%, Others: need >= 60%
+ * Quran: need >= 60%, Others: need >= 50%. GK is displayed with a 60% pass
+ * mark but is excluded from the overall fail decision.
  */
 const getSemesterStatus = (semesterScore, isQuran, isGeneralKnowledge) => {
-  const passMark = isGeneralKnowledge ? 20 : isQuran ? 70 : 60;
+  const passMark = isQuran || isGeneralKnowledge ? 60 : 50;
   return {
-    passed: semesterScore >= passMark,
+    passed: isGeneralKnowledge || semesterScore >= passMark,
     passMark,
     semesterScore,
   };
@@ -59,46 +63,43 @@ const calcFinalResult = (sem1Score, sem2Score, isQuran, isGK) => {
   const totalScore = sem1Score + sem2Score; // sum of two semester % scores (max 200)
 
   if (isGK) {
-    // GK: pass mark is 20% of weight — evaluated separately; not added to grand total
-    // Return a simple result for GK
     return {
       sem1Score,
       sem2Score,
       totalScore,
-      status: 'GK_SEPARATE', // handled at report level
-      gkBonusEligible: sem2Score > 60 || sem1Score > 60, // either semester > 60%
+      status: 'PASS',
+      gkBonusEligible: false,
     };
   }
 
   if (isQuran) {
-    // Quran: total below 120 fails. At 120+, a semester below 70 is a compartment.
-    if (totalScore < 120) {
-      return { sem1Score, sem2Score, totalScore, status: 'FAIL', reason: 'Total below 120 (absolute minimum)' };
-    }
-    if (sem1Score < 70 || sem2Score < 70) {
-      return { sem1Score, sem2Score, totalScore, status: 'PASS_WITH_COMPENSATION', reason: 'One Quran semester is below 70%; re-examination required' };
+    if (sem1Score < 60 || sem2Score < 60) {
+      return { sem1Score, sem2Score, totalScore, status: 'FAIL', reason: 'Quran requires at least 60% in both semesters; compensation is not allowed' };
     }
     return { sem1Score, sem2Score, totalScore, status: 'PASS' };
   }
 
-  // Standard subjects: total below 100 fails; a semester below 60 is a compartment.
-  if (totalScore < 100) {
-    return { sem1Score, sem2Score, totalScore, status: 'FAIL', reason: 'Total below 100 (absolute minimum)' };
+  if (sem1Score < 50 || sem2Score < 50) {
+    return { sem1Score, sem2Score, totalScore, status: 'FAIL', reason: 'At least 50% is required in both semesters; compensation is not allowed' };
   }
-  if (sem1Score >= 60 && sem2Score >= 60) {
-    return { sem1Score, sem2Score, totalScore, status: 'PASS' };
-  }
-  return { sem1Score, sem2Score, totalScore, status: 'PASS_WITH_COMPENSATION', reason: 'One semester is below 60%; re-examination required' };
+  return { sem1Score, sem2Score, totalScore, status: 'PASS' };
 };
 
 // ─────────────────────────────────────────────
 // MARKS SERVICE
 // ─────────────────────────────────────────────
 
+const getActiveSessionYear = async () => {
+  const session = await prisma.academicSession.findFirst({ where: { isCurrent: true } });
+  return session ? session.year : '2024-2025';
+};
+
 const submitMarks = async (records) => {
   const results = [];
+  const activeYear = await getActiveSessionYear();
 
   for (const record of records) {
+    const yearToUse = record.academicYear || activeYear;
     // Validate student and subject exist
     const [student, subject] = await Promise.all([
       prisma.student.findUnique({ where: { id: record.studentId } }),
@@ -126,7 +127,7 @@ const submitMarks = async (records) => {
       }
     }
 
-    // For FINAL_TERM: only one allowed per student/subject/semester — upsert
+    // For FINAL_TERM: only one allowed per student/subject/semester/academicYear — upsert
     if (record.examType === 'FINAL_TERM') {
       const existing = await prisma.markRecord.findFirst({
         where: {
@@ -134,6 +135,7 @@ const submitMarks = async (records) => {
           subjectId: record.subjectId,
           semester: record.semester,
           examType: 'FINAL_TERM',
+          academicYear: yearToUse,
         },
       });
 
@@ -141,10 +143,10 @@ const submitMarks = async (records) => {
       if (existing) {
         result = await prisma.markRecord.update({
           where: { id: existing.id },
-          data: { obtainedMarks: record.obtainedMarks, totalMarks: FINAL_TERM_TOTAL_MARKS },
+          data: { obtainedMarks: record.obtainedMarks, totalMarks: FINAL_TERM_TOTAL_MARKS, academicYear: yearToUse },
         });
       } else {
-        result = await prisma.markRecord.create({ data: { ...record, totalMarks: FINAL_TERM_TOTAL_MARKS } });
+        result = await prisma.markRecord.create({ data: { ...record, totalMarks: FINAL_TERM_TOTAL_MARKS, academicYear: yearToUse } });
       }
       results.push(result);
     } else {
@@ -153,15 +155,16 @@ const submitMarks = async (records) => {
         where: {
           studentId: record.studentId,
           classTestId: record.classTestId,
+          academicYear: yearToUse,
         },
       });
 
       const result = existing
         ? await prisma.markRecord.update({
             where: { id: existing.id },
-            data: { obtainedMarks: roundedObtainedMarks, totalMarks: record.totalMarks },
+            data: { obtainedMarks: roundedObtainedMarks, totalMarks: record.totalMarks, academicYear: yearToUse },
           })
-        : await prisma.markRecord.create({ data: { ...record, obtainedMarks: roundedObtainedMarks } });
+        : await prisma.markRecord.create({ data: { ...record, obtainedMarks: roundedObtainedMarks, academicYear: yearToUse } });
       results.push(result);
     }
   }
@@ -169,8 +172,9 @@ const submitMarks = async (records) => {
   return results;
 };
 
-const getMarksByStudent = async (studentId, semester) => {
-  const where = { studentId };
+const getMarksByStudent = async (studentId, semester, academicYear = null) => {
+  const activeYear = academicYear || await getActiveSessionYear();
+  const where = { studentId, academicYear: activeYear };
   if (semester) where.semester = Number(semester);
 
   return prisma.markRecord.findMany({
@@ -212,12 +216,16 @@ const deleteMark = async (id) => {
  * Returns per-subject breakdowns for both semesters, compensation flags,
  * GK bonus calculation, and an overall pass/fail verdict.
  */
-const generateStudentReport = async (studentId, mode = 'overall', semester = null) => {
+const generateStudentReport = async (studentId, mode = 'overall', semester = null, academicYear = null) => {
+  const activeYear = academicYear || await getActiveSessionYear();
   const student = await prisma.student.findUnique({
     where: { id: studentId },
     include: {
       class: true,
       markRecords: {
+        where: {
+          academicYear: activeYear,
+        },
         include: {
           subject: true,
         },
@@ -235,10 +243,10 @@ const generateStudentReport = async (studentId, mode = 'overall', semester = nul
   const subjects = classSubjects.map(({ subject }) => subject);
 
   const subjectReports = [];
+  const MAX_COMPARTMENTS = 3;
   let grandTotalSem1 = 0;
   let grandTotalSem2 = 0;
   let gkBonus = 0;
-  let hasAnyFail = false;
   let overallStatus = 'PASS';
 
   for (const subject of subjects) {
@@ -275,20 +283,9 @@ const generateStudentReport = async (studentId, mode = 'overall', semester = nul
       finalTermTotal: finalTerm?.totalMarks ?? null,
     });
 
-    // GK bonus logic
-    if (subject.isGeneralKnowledge) {
-      // Check if sem2 GK percentage > 60
-      if (sem2Calc.semesterScore > 60) {
-        gkBonus = 10;
-      }
-    } else {
-      // Add to grand totals (GK not included in grand total by default)
+    if (!subject.isGeneralKnowledge) {
       grandTotalSem1 += sem1Calc.semesterScore;
       grandTotalSem2 += sem2Calc.semesterScore;
-    }
-
-    if (finalResult.status === 'FAIL') {
-      hasAnyFail = true;
     }
 
     subjectReports.push({
@@ -341,13 +338,13 @@ const generateStudentReport = async (studentId, mode = 'overall', semester = nul
   }
 
   // Overall status
-  const hasCompensation = subjectReports.some(
-    (r) => !r.subject.isGeneralKnowledge && r.finalResult.status === 'PASS_WITH_COMPENSATION'
-  );
+  const compartmentCount = subjectReports.filter(
+    (report) => !report.subject.isGeneralKnowledge && report.finalResult.status === 'FAIL'
+  ).length;
 
-  if (hasAnyFail) {
+  if (compartmentCount > MAX_COMPARTMENTS) {
     overallStatus = 'FAIL';
-  } else if (hasCompensation) {
+  } else if (compartmentCount > 0) {
     overallStatus = 'PASS_WITH_COMPENSATION';
   } else {
     overallStatus = 'PASS';
@@ -380,6 +377,7 @@ const generateStudentReport = async (studentId, mode = 'overall', semester = nul
   return {
     reportMode: mode === 'semester' ? 'semester' : 'overall',
     selectedSemester: mode === 'semester' && semester ? Number(semester) : null,
+    academicYear: activeYear,
     student: {
       id: student.id,
       name: student.name,
@@ -401,6 +399,8 @@ const generateStudentReport = async (studentId, mode = 'overall', semester = nul
       maxPossible,
       overallPercentage: Math.round((grandTotal / maxPossible) * 100),
       overallStatus,
+      compartmentCount,
+      maxCompartments: MAX_COMPARTMENTS,
       totalSubjectsEvaluated: totalSubjectCount,
       passedSubjects: subjectReports.filter(
         (r) => !r.subject.isGeneralKnowledge && ['PASS', 'PASS_WITH_COMPENSATION'].includes(r.finalResult.status)
@@ -415,7 +415,8 @@ const generateStudentReport = async (studentId, mode = 'overall', semester = nul
 /**
  * Generate class-wide report (all students in a class)
  */
-const generateClassReport = async (classId, semester) => {
+const generateClassReport = async (classId, semester, academicYear = null) => {
+  const activeYear = academicYear || await getActiveSessionYear();
   const cls = await prisma.class.findUnique({ where: { id: classId } });
   if (!cls) throw new AppError('Class not found.', 404);
 
@@ -425,7 +426,7 @@ const generateClassReport = async (classId, semester) => {
     orderBy: { rollNumber: 'asc' },
   });
 
-  const reports = await Promise.all(students.map((s) => generateStudentReport(s.id)));
+  const reports = await Promise.all(students.map((s) => generateStudentReport(s.id, 'overall', semester, activeYear)));
   const summary = reports.map((report) => ({
     student: report.student,
     semester1: report.semester1Summary,
@@ -440,6 +441,7 @@ const generateClassReport = async (classId, semester) => {
   const highestResult = highest?.[ranking];
   return {
     class: cls,
+    academicYear: activeYear,
     semester: semester ? Number(semester) : null,
     studentReports: reports,
     summary,
@@ -459,4 +461,6 @@ module.exports = {
   deleteMark,
   generateStudentReport,
   generateClassReport,
+  getActiveSessionYear,
 };
+

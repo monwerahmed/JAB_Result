@@ -49,18 +49,69 @@ const createStudent = async ({ name, rollNumber, classId }) => {
   const cls = await prisma.class.findUnique({ where: { id: classId } });
   if (!cls) throw new AppError('Class not found.', 404);
 
-  return prisma.student.create({
+  const activeSession = await prisma.academicSession.findFirst({ where: { isCurrent: true } });
+  const yearStr = activeSession ? activeSession.year : '2024-2025';
+
+  const student = await prisma.student.create({
     data: { name, rollNumber, classId },
     include: { class: true },
   });
+
+  await prisma.studentClass.upsert({
+    where: {
+      studentId_classId_academicYear: {
+        studentId: student.id,
+        classId: student.classId,
+        academicYear: yearStr,
+      },
+    },
+    update: { isCurrent: true, status: 'ENROLLED' },
+    create: {
+      studentId: student.id,
+      classId: student.classId,
+      academicYear: yearStr,
+      status: 'ENROLLED',
+      isCurrent: true,
+    },
+  });
+
+  return student;
 };
 
 const updateStudent = async (id, data) => {
-  await getStudentById(id);
+  const existing = await getStudentById(id);
 
   if (data.classId) {
     const cls = await prisma.class.findUnique({ where: { id: data.classId } });
-    if (!cls) throw new AppError('Class not found.', 404);
+    if (!cls) throw new AppError('Class not found.', 400);
+
+    const activeSession = await prisma.academicSession.findFirst({ where: { isCurrent: true } });
+    const yearStr = activeSession ? activeSession.year : '2024-2025';
+
+    if (existing.classId !== data.classId) {
+      await prisma.studentClass.updateMany({
+        where: { studentId: id, isCurrent: true },
+        data: { isCurrent: false },
+      });
+
+      await prisma.studentClass.upsert({
+        where: {
+          studentId_classId_academicYear: {
+            studentId: id,
+            classId: data.classId,
+            academicYear: yearStr,
+          },
+        },
+        update: { isCurrent: true, status: 'ENROLLED' },
+        create: {
+          studentId: id,
+          classId: data.classId,
+          academicYear: yearStr,
+          status: 'ENROLLED',
+          isCurrent: true,
+        },
+      });
+    }
   }
 
   return prisma.student.update({

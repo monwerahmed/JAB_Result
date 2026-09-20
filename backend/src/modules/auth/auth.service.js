@@ -3,14 +3,17 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../../utils/prisma');
 const { AppError } = require('../../utils/errorHandler');
 
+const getJwtSecret = () => process.env.JWT_SECRET || 'JAB_Result_dev_secret_change_before_production';
+
 const signToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+  return jwt.sign({ id }, getJwtSecret(), {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
 };
 
 const register = async ({ name, email, password }) => {
-  const existingAdmin = await prisma.admin.findUnique({ where: { email } });
+  const normalizedEmail = email.toLowerCase().trim();
+  const existingAdmin = await prisma.admin.findUnique({ where: { email: normalizedEmail } });
   if (existingAdmin) {
     throw new AppError('An admin with this email already exists.', 409);
   }
@@ -18,7 +21,7 @@ const register = async ({ name, email, password }) => {
   const hashedPassword = await bcrypt.hash(password, 12);
 
   const admin = await prisma.admin.create({
-    data: { name, email, password: hashedPassword },
+    data: { name: name.trim(), email: normalizedEmail, password: hashedPassword },
     select: { id: true, name: true, email: true, createdAt: true },
   });
 
@@ -27,7 +30,8 @@ const register = async ({ name, email, password }) => {
 };
 
 const login = async ({ email, password }) => {
-  const admin = await prisma.admin.findUnique({ where: { email } });
+  const normalizedEmail = email.toLowerCase().trim();
+  const admin = await prisma.admin.findUnique({ where: { email: normalizedEmail } });
   if (!admin || !(await bcrypt.compare(password, admin.password))) {
     throw new AppError('Invalid email or password.', 401);
   }
@@ -47,3 +51,4 @@ const getMe = async (adminId) => {
 };
 
 module.exports = { register, login, getMe };
+

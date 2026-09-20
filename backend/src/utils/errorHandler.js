@@ -8,7 +8,8 @@ class AppError extends Error {
 }
 
 const errorHandler = (err, req, res, next) => {
-  let { statusCode, message } = err;
+  let statusCode = err.statusCode || 500;
+  let message = err.message || 'Internal Server Error';
 
   // Prisma unique constraint violation
   if (err.code === 'P2002') {
@@ -36,9 +37,10 @@ const errorHandler = (err, req, res, next) => {
       field: e.path.join('.'),
       message: e.message,
     }));
+    const detailedMessage = errors.map((e) => e.message).join('. ');
     return res.status(422).json({
       success: false,
-      message: 'Validation failed',
+      message: detailedMessage || 'Validation failed',
       errors,
     });
   }
@@ -53,9 +55,6 @@ const errorHandler = (err, req, res, next) => {
     statusCode = 401;
     message = 'Token expired. Please log in again.';
   }
-
-  statusCode = statusCode || 500;
-  message = message || 'Internal Server Error';
 
   if (process.env.NODE_ENV === 'development') {
     console.error('ERROR:', err);

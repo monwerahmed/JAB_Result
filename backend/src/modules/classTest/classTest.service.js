@@ -28,7 +28,10 @@ const updateClassTest = async (id, data) => {
 const deleteClassTest = async (id) => {
   const test = await prisma.classTest.findUnique({ where: { id } });
   if (!test) throw new AppError('Class test not found.', 404);
-  return prisma.classTest.delete({ where: { id } });
+  return prisma.$transaction([
+    prisma.markRecord.deleteMany({ where: { classTestId: id } }),
+    prisma.classTest.delete({ where: { id } }),
+  ]);
 };
 
 module.exports = { getClassTests, createClassTest, updateClassTest, deleteClassTest };

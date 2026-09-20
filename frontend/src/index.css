@@ -364,6 +364,47 @@ select.form-control { cursor: pointer; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 
+/* Marks entry */
+.marks-entry .page-header { padding-bottom: 4px; }
+.marks-control-card { margin-bottom: 20px; padding: 20px; }
+.marks-selection-grid { display: grid; grid-template-columns: 1.1fr 1.4fr 0.7fr; gap: 12px; }
+.marks-section-heading { width: 100%; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: var(--text); font-size: 13px; }
+.marks-section-heading span { color: var(--text-muted); font-size: 12px; }
+.marks-test-card { margin-bottom: 20px; padding: 20px; }
+.marks-test-form { display: grid; grid-template-columns: minmax(260px, 1.5fr) 150px 150px 140px; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); align-items: stretch; }
+.marks-test-form .btn { min-width: 132px; }
+.marks-test-list { margin-top: 18px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.marks-test-list-header, .marks-test-row { display: grid; grid-template-columns: minmax(260px, 1.5fr) 150px 150px 140px; gap: 10px; align-items: center; padding: 10px 12px; }
+.marks-test-list-header { background: var(--surface2); color: var(--text-dim); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.marks-test-row { border-top: 1px solid var(--border); font-size: 13px; }
+.marks-test-row .btn { justify-self: start; width: 100px; }
+.marks-test-empty { padding: 16px 12px; color: var(--text-muted); font-size: 13px; text-align: center; }
+.marks-grid-card { padding: 0; overflow: hidden; }
+.marks-grid-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 20px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, var(--surface), var(--surface2)); }
+.marks-grid-header h3 { font-family: var(--font-display); font-size: 16px; }
+.marks-grid-header p { margin-top: 4px; color: var(--text-muted); font-size: 12px; }
+.marks-table { min-width: 1080px; table-layout: fixed; }
+.marks-table th:nth-child(1), .marks-table td:nth-child(1) { width: 16%; }
+.marks-table th:nth-child(2), .marks-table td:nth-child(2) { width: 42%; }
+.marks-table th:nth-child(3), .marks-table td:nth-child(3) { width: 22%; }
+.marks-table th:nth-child(4), .marks-table td:nth-child(4), .marks-table th:nth-child(5), .marks-table td:nth-child(5) { width: 10%; }
+.marks-table thead th:not(:first-child), .marks-table tbody td:not(:first-child) { text-align: center; }
+.marks-table thead th { background: var(--surface2); color: var(--text-muted); vertical-align: middle; }
+.marks-table thead th span { font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text-dim); }
+.marks-table tbody td { height: 76px; vertical-align: middle; }
+.marks-table tbody td:first-child { min-width: 150px; }
+.marks-ct-entry, .marks-final-entry { display: grid; align-items: center; gap: 7px; text-align: left; }
+.marks-ct-entry { grid-template-columns: 34px minmax(150px, 1fr) 58px 116px; }
+.marks-final-entry { grid-template-columns: 58px 1fr; }
+.marks-ct-entry label, .marks-final-entry label { color: var(--text-muted); font-size: 11px; }
+.marks-test-select { min-width: 150px; height: 40px; }
+.marks-input-with-total { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.marks-input-with-total .form-control { width: 68px; min-width: 68px; text-align: center; }
+.marks-input-with-total span { color: var(--text-muted); font-size: 12px; }
+.marks-weight-cell { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--primary); }
+.marks-weight-cell span { margin-left: 2px; font-family: var(--font); font-size: 11px; font-weight: 500; color: var(--text-muted); }
+.marks-table .form-control { min-width: 72px; }
+
 /* Table */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
@@ -505,6 +546,12 @@ tbody tr:hover td { background: var(--surface2); }
   .main-content { margin-left: 0; }
   .app-header { padding: 8px 20px; }
   .form-grid, .form-grid-3 { grid-template-columns: 1fr; }
+  .marks-selection-grid { grid-template-columns: 1fr; }
+  .marks-test-form { grid-template-columns: 1fr; }
+  .marks-test-list-header, .marks-test-row { grid-template-columns: 1.4fr 0.8fr 0.8fr 88px; gap: 6px; padding: 9px 8px; }
+  .marks-ct-entry { grid-template-columns: 34px minmax(150px, 1fr) 58px 116px; }
+  .marks-grid-header { align-items: flex-start; flex-direction: column; }
+  .marks-section-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
   .semester-grid { grid-template-columns: 1fr; }
 }
 

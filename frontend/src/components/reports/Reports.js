@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { classAPI, studentAPI, marksAPI } from '../../api';
+import { classAPI, studentAPI, marksAPI, promotionAPI } from '../../api';
 import { getErrMsg, statusBadgeClass, statusLabel, fmt2, scoreBarColor } from '../../utils/helpers';
 import toast from 'react-hot-toast';
 import jamiaAhmadiyya from '../../jamia-ahmadiyya.jpg';
@@ -65,7 +65,6 @@ function SubjectCard({ report, semesterOnly }) {
       </div>
       {open && (
         <div className="report-subject-body">
-          {/* Result detail */}
           <div style={{ marginBottom: 12, padding: '10px 14px', background: 'var(--bg)', borderRadius: 'var(--radius)', fontSize: 13 }}>
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               {semesterOnly ? (
@@ -84,7 +83,7 @@ function SubjectCard({ report, semesterOnly }) {
                 <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
                   <div>Class tests: <strong>{fmt2(data.classTestObtained)}/{fmt2(data.classTestTotal)}</strong></div>
                   <div>Final term: <strong>{data.finalTermObtained === null ? '—' : `${fmt2(data.finalTermObtained)}/${fmt2(data.finalTermTotal)}`}</strong></div>
-                  <div>Class Tests: {data.hasClassTests ? `${data.classTestCount} test(s), avg ${fmt2(data.classTestAvgPct)}%` : 'None (0% weight)'}</div>
+                  <div>Class Tests: {data.hasClassTests ? `${data.classTestCount} test(s), combined ${fmt2(data.classTestCombinedPct)}%` : 'None (0% weight)'}</div>
                   <div>Final Term: {data.finalTerm ? `${data.finalTerm.obtainedMarks}/${data.finalTerm.totalMarks} (${fmt2(data.finalTerm.percentage)}%)` : '—'}</div>
                   <div style={{ marginTop: 6, color: data.passed ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
                     {data.passed ? '✓ Passed' : '✗ Failed'} (min {data.passMark}%)
@@ -158,21 +157,45 @@ function MarkSheetTable({ subjectReports, semesterOnly }) {
 }
 
 // ── Student Report View ────────────────────────────────────────────────────
-function StudentReport({ studentId, onBack, onUpdate, mode, semester, signatureName }) {
+function StudentReport({ studentId, onBack, onUpdate, mode, semester, signatureName, academicYear }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [eligibility, setEligibility] = useState(null);
+  const [promoting, setPromoting] = useState(false);
 
-  useEffect(() => {
-    marksAPI.studentReport(studentId, { mode, semester: mode === 'semester' ? semester : undefined })
+  const fetchReport = useCallback(() => {
+    setLoading(true);
+    marksAPI.studentReport(studentId, { mode, semester: mode === 'semester' ? semester : undefined, academicYear: academicYear || undefined })
       .then((r) => setReport(r.data.data))
       .catch((err) => toast.error(getErrMsg(err)))
       .finally(() => setLoading(false));
-  }, [studentId, mode, semester]);
+  }, [studentId, mode, semester, academicYear]);
+
+  useEffect(() => {
+    fetchReport();
+    promotionAPI.checkEligibility(studentId, { academicYear: academicYear || undefined })
+      .then((r) => setEligibility(r.data.data))
+      .catch((err) => console.error(err));
+  }, [fetchReport, studentId, academicYear]);
+
+  const handlePromoteInline = async () => {
+    setPromoting(true);
+    try {
+      const res = await promotionAPI.promoteStudent({ studentId });
+      toast.success(res.data.message);
+      fetchReport();
+      promotionAPI.checkEligibility(studentId).then((r) => setEligibility(r.data.data));
+    } catch (err) {
+      toast.error(getErrMsg(err));
+    } finally {
+      setPromoting(false);
+    }
+  };
 
   if (loading) return <div className="loading-wrap"><span className="spinner" /> Generating report…</div>;
   if (!report) return null;
 
-  const { student, subjectReports, summary } = report;
+  const { student, subjectReports, summary, academicYear: activeReportSession } = report;
   const semesterOnly = mode === 'semester' ? Number(semester) : null;
   const selectedSummary = semesterOnly === 2 ? report.semester2Summary : report.semester1Summary;
 
@@ -183,7 +206,7 @@ function StudentReport({ studentId, onBack, onUpdate, mode, semester, signatureN
       const semesterData = semesterOnly === 2 ? item.semester2 : item.semester1;
       return !semesterData.passed;
     }
-    return item.finalResult.status === 'PASS_WITH_COMPENSATION';
+    return item.finalResult.status === 'FAIL';
   });
   const overallColor = reportStatus === 'PASS' ? 'var(--success)'
     : reportStatus === 'FAIL' ? 'var(--danger)'
@@ -194,13 +217,28 @@ function StudentReport({ studentId, onBack, onUpdate, mode, semester, signatureN
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <button className="btn btn-ghost btn-sm" onClick={onBack}>← Back</button>
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>Result Report - {student.name}</h3>
+        <span className="badge badge-neutral" style={{ fontSize: 12 }}>Session: {activeReportSession}</span>
         <button className="btn btn-ghost" onClick={() => onUpdate(student)}>Update Result</button>
         <button className="btn btn-primary" onClick={() => window.print()}>Print / Save PDF</button>
       </div>
 
+      {!semesterOnly && eligibility && eligibility.isEligible && (
+        <div className="no-print" style={{ background: '#ecfdf5', border: '1px solid #10b981', padding: '12px 16px', borderRadius: 'var(--radius)', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <strong style={{ color: '#065f46', fontSize: 14 }}>🎓 Auto-Promotion Eligible!</strong>
+            <div style={{ color: '#047857', fontSize: 13, marginTop: 2 }}>
+              {student.name} passed overall ({eligibility.overallStatus}). Ready to promote from <strong>{eligibility.currentClass.className}</strong> to <strong>{eligibility.nextClass.className}</strong>.
+            </div>
+          </div>
+          <button className="btn btn-primary" onClick={handlePromoteInline} disabled={promoting}>
+            {promoting ? <><span className="spinner" /> Promoting…</> : `Promote to ${eligibility.nextClass.className}`}
+          </button>
+        </div>
+      )}
+
       <ReportBrand>
         <div style={{ fontWeight: 700, fontSize: 16 }}>Jamia Ahmadiyya Bangladesh</div>
-        <div style={{ fontWeight: 600 }}>{semesterOnly ? `Semester ${semesterOnly} Result` : 'Annual Result Mark Sheet'}</div>
+        <div style={{ fontWeight: 600 }}>{semesterOnly ? `Semester ${semesterOnly} Result` : 'Annual Result Mark Sheet'} ({activeReportSession})</div>
         <div>{student.class} | {student.name} | Roll No: {student.rollNumber}</div>
       </ReportBrand>
 
@@ -233,7 +271,7 @@ function StudentReport({ studentId, onBack, onUpdate, mode, semester, signatureN
           <div className="value" style={{ fontSize: 16, color: overallColor }}>
             {statusLabel(reportStatus)}
           </div>
-          <div className="sub">{semesterOnly ? selectedSummary.failedSubjects : summary.failedSubjects} subject(s) failed</div>
+          <div className="sub">{summary.compartmentCount}/{summary.maxCompartments} compartments</div>
         </div>}
       </div>
 
@@ -253,7 +291,7 @@ function StudentReport({ studentId, onBack, onUpdate, mode, semester, signatureN
         <div className="compensation-note">
           <strong>Compartment / Re-examination:</strong>{' '}
           {compensationSubjects.map((item) => item.subject.name).join(', ')}
-          <span> - marks below the required pass threshold.</span>
+          <span> - {summary.compartmentCount} of {summary.maxCompartments} allowed compartments.</span>
         </div>
       )}
       <PrintSignature adminName={signatureName} />
@@ -274,6 +312,8 @@ export default function Reports() {
   const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [selectedSession, setSelectedSession] = useState('');
   const [selectedClass, setSelectedClass] = useState(searchParams.get('classId') || '');
   const [selectedStudent, setSelectedStudent] = useState('');
   const requestedStudentId = searchParams.get('studentId');
@@ -285,7 +325,13 @@ export default function Reports() {
   const [signatureName, setSignatureName] = useState(admin?.name || '');
   const [loadingStudents, setLoadingStudents] = useState(false);
 
-  useEffect(() => { classAPI.getAll().then((r) => setClasses(r.data.data)); }, []);
+  useEffect(() => {
+    classAPI.getAll().then((r) => setClasses(r.data.data));
+    promotionAPI.getSessions().then((r) => {
+      setSessions(r.data.data.all || []);
+      setSelectedSession(r.data.data.current?.year || '');
+    });
+  }, []);
 
   useEffect(() => {
     if (!selectedClass) { setStudents([]); return; }
@@ -307,7 +353,7 @@ export default function Reports() {
       <div>
         <div className="page-header"><div><h2>Reports</h2></div></div>
         <div className="page-body">
-          <StudentReport studentId={viewingStudentId} onBack={() => setViewingStudentId(null)} onUpdate={(student) => navigate(`/marks?classId=${student.classId}&studentId=${student.id}`)} mode={reportMode} semester={semester} signatureName={signatureName} />
+          <StudentReport studentId={viewingStudentId} academicYear={selectedSession} onBack={() => setViewingStudentId(null)} onUpdate={(student) => navigate(`/marks?classId=${student.classId}&studentId=${student.id}`)} mode={reportMode} semester={semester} signatureName={signatureName} />
         </div>
       </div>
     );
@@ -315,7 +361,7 @@ export default function Reports() {
 
   const loadClassReport = async (mode) => {
     try {
-      const response = await marksAPI.classReport(selectedClass, mode === 'semester' ? { semester } : {});
+      const response = await marksAPI.classReport(selectedClass, { semester: mode === 'semester' ? semester : undefined, academicYear: selectedSession || undefined });
       setClassReportMode(mode);
       setClassSummary(response.data.data);
     } catch (error) { toast.error(getErrMsg(error)); }
@@ -327,12 +373,22 @@ export default function Reports() {
       <div className="page-header">
         <div>
           <h2>Result Reports</h2>
-          <p>View calculated pass/fail/compensation results per student.</p>
+          <p>View calculated pass/fail/compensation results and auto-promotion status.</p>
         </div>
       </div>
       <div className="page-body">
-        <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card no-print" style={{ marginBottom: 20 }}>
           <div className="form-grid">
+            <div className="form-group">
+              <label className="form-label">Academic Session</label>
+              <select className="form-control" value={selectedSession} onChange={(e) => setSelectedSession(e.target.value)}>
+                {sessions.map((s) => (
+                  <option key={s.id} value={s.year}>
+                    {s.year} {s.isCurrent ? '(Active)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="form-group">
               <label className="form-label">Select Class</label>
               <select className="form-control" value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedStudent(''); }}>
@@ -374,7 +430,7 @@ export default function Reports() {
           <div style={{ padding: '14px 20px' }}>
             <ReportBrand>
               <div style={{ fontWeight: 700, fontSize: 16 }}>Jamia Ahmadiyya Bangladesh</div>
-              <div style={{ fontWeight: 600 }}>{classSummary.class.className} - {classReportMode === 'semester' ? `Semester ${semester}` : 'Overall Result'}</div>
+              <div style={{ fontWeight: 600 }}>{classSummary.class.className} - {classReportMode === 'semester' ? `Semester ${semester}` : 'Overall Result'} ({selectedSession})</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>All active students, ranked by {classReportMode === 'semester' ? `Semester ${semester}` : 'annual'} result</div>
             </ReportBrand>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}><button className="btn btn-ghost btn-sm" onClick={() => window.print()}>Print / PDF</button></div>

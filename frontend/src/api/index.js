@@ -62,12 +62,23 @@ export const classTestAPI = {
 // Marks
 export const marksAPI = {
   submit: (records) => api.post('/marks', { records }),
-  getByStudent: (studentId, semester) =>
-    api.get(`/marks/student/${studentId}`, { params: semester ? { semester } : {} }),
+  getByStudent: (studentId, params = {}) =>
+    api.get(`/marks/student/${studentId}`, { params }),
   update: (id, data) => api.put(`/marks/${id}`, data),
   delete: (id) => api.delete(`/marks/${id}`),
   studentReport: (studentId, params) => api.get(`/marks/report/student/${studentId}`, { params }),
   classReport: (classId, params) => api.get(`/marks/report/class/${classId}`, { params }),
+};
+
+// Promotion & Fresh Start
+export const promotionAPI = {
+  getSessions: () => api.get('/promotion/sessions'),
+  checkEligibility: (studentId, params) => api.get(`/promotion/eligibility/${studentId}`, { params }),
+  promoteStudent: (data) => api.post('/promotion/promote', data),
+  autoPromoteClass: (data) => api.post('/promotion/auto-promote', data),
+  executeFreshStart: (data) => api.post('/promotion/fresh-start', data),
+  resetMarks: (data) => api.post('/promotion/reset-marks', data),
+  getHistory: (studentId) => api.get(`/promotion/history/${studentId}`),
 };
 
 export default api;

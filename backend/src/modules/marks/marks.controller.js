@@ -9,8 +9,8 @@ const submitMarks = asyncHandler(async (req, res) => {
 });
 
 const getMarksByStudent = asyncHandler(async (req, res) => {
-  const { semester } = req.query;
-  const marks = await marksService.getMarksByStudent(req.params.studentId, semester);
+  const { semester, academicYear } = req.query;
+  const marks = await marksService.getMarksByStudent(req.params.studentId, semester, academicYear);
   res.status(200).json({ success: true, data: marks });
 });
 
@@ -26,12 +26,14 @@ const deleteMark = asyncHandler(async (req, res) => {
 });
 
 const getStudentReport = asyncHandler(async (req, res) => {
-  const report = await marksService.generateStudentReport(req.params.studentId, req.query.mode, req.query.semester);
+  const { mode, semester, academicYear } = req.query;
+  const report = await marksService.generateStudentReport(req.params.studentId, mode, semester, academicYear);
   res.status(200).json({ success: true, data: report });
 });
 
 const getClassReport = asyncHandler(async (req, res) => {
-  const report = await marksService.generateClassReport(req.params.classId, req.query.semester);
+  const { semester, academicYear } = req.query;
+  const report = await marksService.generateClassReport(req.params.classId, semester, academicYear);
   res.status(200).json({ success: true, data: report });
 });
 

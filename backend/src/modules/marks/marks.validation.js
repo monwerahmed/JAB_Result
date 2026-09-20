@@ -7,7 +7,7 @@ const markRecordSchema = z.object({
   semester: z.number().int().min(1).max(2),
   examType: z.enum(['CLASS_TEST', 'FINAL_TERM']),
   obtainedMarks: z.number().min(0, 'Obtained marks cannot be negative'),
-  totalMarks: z.number().positive('Total marks must be positive'),
+  totalMarks: z.number().positive('Total marks must be positive').default(25),
 }).refine(
   (data) => data.obtainedMarks <= data.totalMarks,
   { message: 'Obtained marks cannot exceed total marks', path: ['obtainedMarks'] }

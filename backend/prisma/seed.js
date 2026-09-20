@@ -20,6 +20,14 @@ const classSubjects = {
 async function main() {
   console.log('Seeding database...');
 
+  // 1. Seed default AcademicSession
+  const currentSession = await prisma.academicSession.upsert({
+    where: { year: '2024-2025' },
+    update: { isCurrent: true },
+    create: { year: '2024-2025', isCurrent: true },
+  });
+  console.log(`Active Academic Session: ${currentSession.year}`);
+
   const seededClasses = {};
 
   for (const [className, subjects] of Object.entries(classSubjects)) {
@@ -47,10 +55,68 @@ async function main() {
     console.log(`Seeded ${className} with ${subjects.length} subjects`);
   }
 
+  // Seed sample students for testing promotion sequence
+  const sampleStudentsData = [
+    { name: 'Abdullah Al Mamun', rollNumber: 'FK-001', className: 'Faslul Khas' },
+    { name: 'Tariq Ahmad', rollNumber: 'MU-001', className: 'Muhamada' },
+    { name: 'Zubair Hossain', rollNumber: 'ULA-001', className: 'Ula' },
+    { name: 'Rashid Khan', rollNumber: 'SAN-001', className: 'Sania' },
+    { name: 'Bilal Ahmed', rollNumber: 'SAL-001', className: 'Salesa' },
+    { name: 'Khalid Hasan', rollNumber: 'RAB-001', className: 'Rabea' },
+  ];
+
+  for (const s of sampleStudentsData) {
+    const targetClass = seededClasses[s.className];
+    if (targetClass) {
+      const st = await prisma.student.upsert({
+        where: { rollNumber: s.rollNumber },
+        update: { name: s.name, classId: targetClass.id, active: true },
+        create: { name: s.name, rollNumber: s.rollNumber, classId: targetClass.id },
+      });
+
+      await prisma.studentClass.upsert({
+        where: {
+          studentId_classId_academicYear: {
+            studentId: st.id,
+            classId: targetClass.id,
+            academicYear: currentSession.year,
+          },
+        },
+        update: { status: 'ENROLLED', isCurrent: true },
+        create: {
+          studentId: st.id,
+          classId: targetClass.id,
+          academicYear: currentSession.year,
+          status: 'ENROLLED',
+          isCurrent: true,
+        },
+      });
+    }
+  }
+
+  // Seed test student in Khamesa with marks
   const testStudent = await prisma.student.upsert({
     where: { rollNumber: 'TEST-001' },
     update: { name: 'Test Student', classId: seededClasses.Khamesa.id, active: true },
     create: { name: 'Test Student', rollNumber: 'TEST-001', classId: seededClasses.Khamesa.id },
+  });
+
+  await prisma.studentClass.upsert({
+    where: {
+      studentId_classId_academicYear: {
+        studentId: testStudent.id,
+        classId: seededClasses.Khamesa.id,
+        academicYear: currentSession.year,
+      },
+    },
+    update: { status: 'ENROLLED', isCurrent: true },
+    create: {
+      studentId: testStudent.id,
+      classId: seededClasses.Khamesa.id,
+      academicYear: currentSession.year,
+      status: 'ENROLLED',
+      isCurrent: true,
+    },
   });
 
   const seededClassSubjects = await prisma.classSubject.findMany({
@@ -62,20 +128,27 @@ async function main() {
     for (const semester of [1, 2]) {
       const classTest = await prisma.classTest.upsert({
         where: {
-          classSubjectId_semester_testNumber: {
+          classSubjectId_semester_testNumber_academicYear: {
             classSubjectId: classSubject.id,
             semester,
             testNumber: 1,
+            academicYear: currentSession.year,
           },
         },
-        update: { totalMarks: 20 },
-        create: { classSubjectId: classSubject.id, semester, testNumber: 1, totalMarks: 20 },
+        update: { totalMarks: 25 },
+        create: {
+          classSubjectId: classSubject.id,
+          semester,
+          testNumber: 1,
+          totalMarks: 25,
+          academicYear: currentSession.year,
+        },
       });
 
       const existingClassTestMark = await prisma.markRecord.findFirst({
-        where: { studentId: testStudent.id, classTestId: classTest.id },
+        where: { studentId: testStudent.id, classTestId: classTest.id, academicYear: currentSession.year },
       });
-      const classTestData = { obtainedMarks: semester === 1 ? 16 : 18, totalMarks: 20 };
+      const classTestData = { obtainedMarks: semester === 1 ? 20 : 22, totalMarks: 25, academicYear: currentSession.year };
       if (existingClassTestMark) {
         await prisma.markRecord.update({ where: { id: existingClassTestMark.id }, data: classTestData });
       } else {
@@ -85,9 +158,9 @@ async function main() {
       }
 
       const existingFinalTerm = await prisma.markRecord.findFirst({
-        where: { studentId: testStudent.id, subjectId: classSubject.subjectId, semester, examType: 'FINAL_TERM' },
+        where: { studentId: testStudent.id, subjectId: classSubject.subjectId, semester, examType: 'FINAL_TERM', academicYear: currentSession.year },
       });
-      const finalTermData = { obtainedMarks: semester === 1 ? 78 : 82, totalMarks: 100 };
+      const finalTermData = { obtainedMarks: semester === 1 ? 78 : 82, totalMarks: 100, academicYear: currentSession.year };
       if (existingFinalTerm) {
         await prisma.markRecord.update({ where: { id: existingFinalTerm.id }, data: finalTermData });
       } else {
@@ -110,3 +183,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

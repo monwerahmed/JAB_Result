@@ -1,5 +1,12 @@
-export const getErrMsg = (err) =>
-  err?.response?.data?.message || err?.message || 'Something went wrong.';
+export const getErrMsg = (err) => {
+  if (err?.response?.data?.message) {
+    return err.response.data.message;
+  }
+  if (err?.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+    return err.response.data.errors.map((e) => e.message).join('. ');
+  }
+  return err?.message || 'An unexpected error occurred.';
+};
 
 export const fmt2 = (n) => {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '—';

@@ -52,6 +52,7 @@ function SubjectMarkRow({ subject, existingMarks, classTests, onChange, onAutoSa
   const finalWeighted = finalObtained !== ''
     ? Math.round(Number(finalObtained) * (hasClassTestMark ? 0.75 : 1))
     : 0;
+  const totalWeighted = classTestWeighted + finalWeighted;
   const saveRow = () => onAutoSave(subject.id, { classTestId, obtained, finalObtained, finalTotal });
   return (
     <tr>
@@ -81,6 +82,7 @@ function SubjectMarkRow({ subject, existingMarks, classTests, onChange, onAutoSa
       </td>
       <td className="marks-weight-cell">{classTestWeighted}<span>/25</span></td>
       <td className="marks-weight-cell">{finalWeighted}<span>/75</span></td>
+      <td className="marks-weight-cell">{totalWeighted}<span>/100</span></td>
     </tr>
   );
 }
@@ -248,7 +250,7 @@ export default function MarksEntry() {
         </div>}
         {selectedClass && selectedStudent && <div className="card marks-grid-card">
           <div className="marks-grid-header"><div><h3>Marks - Semester {semester}</h3><p>Enter a mark and move to the next field. It saves automatically.</p></div><button className="btn btn-primary" onClick={saveMarks} disabled={saving}>{saving ? 'Saving...' : 'Save All Marks'}</button></div>
-          <div className="table-wrap"><table className="marks-table"><thead><tr><th>Subject</th><th>Class Test</th><th>Final Term</th><th>CT<br /><span>25 marks</span></th><th>Final<br /><span>75 marks</span></th></tr></thead><tbody>{subjects.map((subject) => <SubjectMarkRow key={subject.id} subject={subject} existingMarks={existingMarks.filter((mark) => mark.subjectId === subject.id)} classTests={classTests.filter((test) => test.classSubject?.subjectId === subject.id)} onChange={handleRowChange} onAutoSave={autoSaveMarks} />)}</tbody></table></div>
+          <div className="table-wrap"><table className="marks-table"><thead><tr><th>Subject</th><th>Class Test</th><th>Final Term</th><th>CT<br /><span>25 marks</span></th><th>Final<br /><span>75 marks</span></th><th>Total<br /><span>100 marks</span></th></tr></thead><tbody>{subjects.map((subject) => <SubjectMarkRow key={subject.id} subject={subject} existingMarks={existingMarks.filter((mark) => mark.subjectId === subject.id)} classTests={classTests.filter((test) => test.classSubject?.subjectId === subject.id)} onChange={handleRowChange} onAutoSave={autoSaveMarks} />)}</tbody></table></div>
         </div>}
       </div>
     </div>

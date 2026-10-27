@@ -383,11 +383,11 @@ select.form-control { cursor: pointer; }
 .marks-grid-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 20px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, var(--surface), var(--surface2)); }
 .marks-grid-header h3 { font-family: var(--font-display); font-size: 16px; }
 .marks-grid-header p { margin-top: 4px; color: var(--text-muted); font-size: 12px; }
-.marks-table { min-width: 1080px; table-layout: fixed; }
-.marks-table th:nth-child(1), .marks-table td:nth-child(1) { width: 16%; }
-.marks-table th:nth-child(2), .marks-table td:nth-child(2) { width: 42%; }
-.marks-table th:nth-child(3), .marks-table td:nth-child(3) { width: 22%; }
-.marks-table th:nth-child(4), .marks-table td:nth-child(4), .marks-table th:nth-child(5), .marks-table td:nth-child(5) { width: 10%; }
+.marks-table { min-width: 1120px; table-layout: fixed; }
+.marks-table th:nth-child(1), .marks-table td:nth-child(1) { width: 15%; }
+.marks-table th:nth-child(2), .marks-table td:nth-child(2) { width: 39%; }
+.marks-table th:nth-child(3), .marks-table td:nth-child(3) { width: 21%; }
+.marks-table th:nth-child(4), .marks-table td:nth-child(4), .marks-table th:nth-child(5), .marks-table td:nth-child(5), .marks-table th:nth-child(6), .marks-table td:nth-child(6) { width: 8.33%; }
 .marks-table thead th:not(:first-child), .marks-table tbody td:not(:first-child) { text-align: center; }
 .marks-table thead th { background: var(--surface2); color: var(--text-muted); vertical-align: middle; }
 .marks-table thead th span { font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text-dim); }
